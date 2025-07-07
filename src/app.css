@@ -1,0 +1,17 @@
+/* imports */
+@import "tailwindcss";
+
+.rubikal {
+  font-family: "Rubik", sans-serif;
+  font-optical-sizing: auto;
+}
+
+/* themes */
+@custom-variant dark (&:where(.dark, .dark *));
+@theme {
+  --customWhite: #f5f5e6;
+}
+
+.dark {
+  --darkGray: #232326 --lightBlack: #151515;
+}
