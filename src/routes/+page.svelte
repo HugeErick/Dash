@@ -20,7 +20,7 @@
   let servers: Server[] = [
     {
       name: "Unwanted Backend",
-      url: new URL("http://nurichvsdiewelt.work/api/health"),
+      url: new URL("https://nurichvsdiewelt.work/api/health"),
       status: "unknown",
       lastChecked: null,
     },
