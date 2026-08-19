@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onDestroy,  onMount } from "svelte";
 
   interface Server {
     name: String;
-    url: URL;
+    url: string;
     status: "unknown" | "healthy" | "unhealthy" | "offline";
     lastChecked: Date | null;
     details?: {
@@ -17,15 +17,23 @@
     };
   }
 
-  let servers: Server[] = [
+  const HARDCODED_SERVERS: { name: string; url: string }[] = [
     {
       name: "Unwanted Backend",
-      url: new URL("https://nurichvsdiewelt.work/api/health"),
-      status: "unknown",
-      lastChecked: null,
+      url: "https://nurichvsdiewelt.work/api/health",
     },
-    // Add more as needed
+    // Add more permanent servers here as needed.
   ];
+
+  let servers: Server[] = HARDCODED_SERVERS.map((s) => ({
+    ...s,
+    status: "unknown",
+    lastChecked: null,
+  }));
+
+  let listPollId: ReturnType<typeof setInterval>;
+  let healthPollId: ReturnType<typeof setInterval>;
+
 
   function formatUptime(seconds: number): string {
     const days = Math.floor(seconds / 86400);
@@ -62,10 +70,61 @@
     servers = [...servers];
   }
 
-  onMount(() => {
-    servers.forEach((server) => {
-      checkServerStatus(server);
-    });
+  async function checkAllServers() {
+    await Promise.all(servers.map(checkServerStatus));
+  }
+
+  async function refreshServerList() {
+    const known = new Map(servers.map((s) => [s.name, s]));
+    const hardcodedNames = new Set(HARDCODED_SERVERS.map((s) => s.name));
+
+    function toServer(entry: { name: string; url: string }): Server {
+      const existing = known.get(entry.name);
+      if (existing && existing.url === entry.url) {
+        return existing;
+      }
+      return {
+        name: entry.name,
+        url: entry.url,
+        status: "unknown",
+        lastChecked: null,
+      };
+    }
+
+    let registered: { name: string; url: string }[] = [];
+    try {
+      const res = await fetch("/api/servers");
+      if (res.ok) {
+        registered = await res.json();
+      }
+    } catch (err) {
+      console.error("Failed to fetch registered servers", err);
+      // Fall through — we still want to keep the hardcoded servers showing
+      // even if the remote registry is unreachable.
+    }
+
+    const merged = [
+      ...HARDCODED_SERVERS.map(toServer),
+      ...registered
+        .filter((r) => !hardcodedNames.has(r.name))
+        .map(toServer),
+    ];
+ 
+    servers = merged;
+ 
+    const needsCheck = servers.filter((s) => s.status === "unknown");
+    await Promise.all(needsCheck.map(checkServerStatus));
+  }
+
+  onMount(async () => {
+    await refreshServerList();
+    listPollId = setInterval(refreshServerList, 15000);
+    healthPollId = setInterval(checkAllServers, 30000);
+  });
+
+  onDestroy(() => {
+    clearInterval(listPollId);
+    clearInterval(healthPollId);
   });
 </script>
 
@@ -73,8 +132,14 @@
   <div class="m-2 p-2">
     <h2 class="font-bold text-4xl">Servers</h2>
   </div>
+  {#if servers.length === 0}
+    <p class="m-2 p-2 text-gray-500">
+      No servers registered yet. 
+    </p>
+  {/if}
+
   <div class="grid gap-4">
-    {#each servers as server (server.url)}
+    {#each servers as server (server.name)}
       <div class="rounded-lg border p-4">
         <div class="flex items-center gap-2">
           <div
