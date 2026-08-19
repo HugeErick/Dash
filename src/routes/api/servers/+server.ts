@@ -15,7 +15,7 @@ function checkAuth(request: Request) {
 // GET /api/servers — list everything currently registered.
 // The dashboard page calls this on load and on a polling interval.
 export const GET: RequestHandler = async () => {
-  return json(loadServers());
+  return json(await loadServers());
 };
 
 // POST /api/servers — register a new server or update an existing one
@@ -49,7 +49,7 @@ export const POST: RequestHandler = async ({ request }) => {
     throw error(400, "Resulting health URL is not valid");
   }
 
-  const entry = upsertServer(name, healthUrl);
+  const entry = await upsertServer(name, healthUrl);
   return json(entry, { status: 201 });
 };
 
@@ -59,6 +59,6 @@ export const DELETE: RequestHandler = async ({ request }) => {
   const body = await request.json().catch(() => null);
   const name = body?.name;
   if (!name) throw error(400, "Missing 'name'");
-  const removed = removeServer(name);
+  const removed = await removeServer(name);
   return json({ removed });
 };

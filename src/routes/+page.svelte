@@ -95,7 +95,14 @@
     try {
       const res = await fetch("/api/servers");
       if (res.ok) {
-        registered = await res.json();
+        const body = await res.json();
+        if (Array.isArray(body)) {
+          registered = body;
+        } else {
+          console.error("Unexpected /api/servers response shape:", body);
+        }
+      } else {
+        console.error("GET /api/servers failed:", res.status, await res.text());
       }
     } catch (err) {
       console.error("Failed to fetch registered servers", err);
