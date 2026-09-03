@@ -26,17 +26,30 @@ function fromRow(row: ServerRow): StoredServer {
   };
 }
 
+async function withRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+      if (attempts > 1 && e instanceof TypeError && e.message.includes("fetch failed")) {
+        return withRetry(fn, attempts -1);
+      }
+      throw e;
+    }
+}
+
 export async function loadServers(): Promise<StoredServer[]> {
-  const { data, error } = await supabase
+  return withRetry(async () => {
+    const { data, error } = await supabase
     .from("servers")
     .select("*")
     .order("name");
 
-  if (error) {
-    console.error("[loadServers] supabase err:", error);
-    throw kitError (500, `Failed to load servers :${error.message}`);
-  }
-  return (data ?? []).map(fromRow);
+    if (error) {
+      console.error("[loadServers] supabase err:", error);
+      throw kitError (500, `Failed to load servers :${error.message}`);
+    }
+    return (data ?? []).map(fromRow);
+  })
 }
 
 /**

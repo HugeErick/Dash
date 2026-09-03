@@ -38,6 +38,7 @@
     "@supabase/supabase-js": "^2.112.3",
     "bits-ui": "^2.18.1",
     "mode-watcher": "^1.1.0",
-    "tailwind-variants": "^3.3.1"
+    "tailwind-variants": "^3.3.1",
+    "undici": "^8.10.1"
   }
 }
