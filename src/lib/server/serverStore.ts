@@ -1,4 +1,7 @@
 import { supabase } from "$lib/supabaseClient";
+import { error as kitError } from "@sveltejs/kit";
+
+// TODO: sanitize input received w zod here
 
 export interface StoredServer {
   name: string;
@@ -29,11 +32,12 @@ export async function loadServers(): Promise<StoredServer[]> {
     .select("*")
     .order("name");
 
-  if (error) throw error;
+  if (error) {
+    console.error("[loadServers] supabase err:", error);
+    throw kitError (500, `Failed to load servers :${error.message}`);
+  }
   return (data ?? []).map(fromRow);
 }
-
-// TODO: wrapp on try and catch in order to get svelte errs rather than 500 err code due to supabases ass
 
 /**
  * Registers a server, or updates its URL if one with the same name already
@@ -54,7 +58,10 @@ export async function upsertServer(name: string, url: string): Promise<StoredSer
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error("[upsertServer] supabase err:", error);
+    throw kitError (500, `Failed to load servers :${error.message}`);
+  };
   return fromRow(data);
 }
 
@@ -65,6 +72,9 @@ export async function removeServer(name: string): Promise<boolean> {
     .eq("name", name)
     .select();
 
-  if (error) throw error;
+    if (error) {
+      console.error("[removeServer] supabase err:", error);
+      throw kitError (500, `Failed to load servers :${error.message}`);
+  };
   return (data?.length ?? 0) > 0;
 }
